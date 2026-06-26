@@ -1,8 +1,9 @@
 namespace ElegantSnake
 {
     /// <summary>
-    /// Centralne ustawienia rozgrywki i wymiarów planszy.
-    /// Zmiana wartości tutaj wpływa na cały projekt.
+    /// Centralne ustawienia wymiarów planszy. Parametry zależne od poziomu
+    /// trudności (tempo, owijanie, przeszkody) znajdują się w
+    /// <see cref="DifficultySettings"/>.
     /// </summary>
     public static class GameConfig
     {
@@ -17,15 +18,6 @@ namespace ElegantSnake
 
         /// <summary>Margines wokół planszy.</summary>
         public const int BorderPadding = 18;
-
-        /// <summary>Początkowy odstęp między krokami węża (ms) — im mniej, tym szybciej.</summary>
-        public const int StartIntervalMs = 95;
-
-        /// <summary>Najmniejszy możliwy odstęp między krokami (ms).</summary>
-        public const int MinIntervalMs = 55;
-
-        /// <summary>Liczba punktów za zjedzenie jednego owocu.</summary>
-        public const int PointsPerFood = 10;
 
         /// <summary>Szerokość całego obszaru gry w pikselach.</summary>
         public const int BoardPixelWidth = GridSize * CellSize + BorderPadding * 2;

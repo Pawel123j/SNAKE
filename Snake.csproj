@@ -11,11 +11,22 @@
     <AssemblyName>Snake</AssemblyName>
   </PropertyGroup>
 
+  <!-- Folder z testami ma własny projekt; nie kompilujemy go do aplikacji. -->
+  <ItemGroup>
+    <Compile Remove="tests/**/*.cs" />
+  </ItemGroup>
+
   <ItemGroup>
     <PackageReference Include="Avalonia" Version="11.2.1" />
     <PackageReference Include="Avalonia.Desktop" Version="11.2.1" />
     <PackageReference Include="Avalonia.Themes.Fluent" Version="11.2.1" />
     <PackageReference Include="Avalonia.Fonts.Inter" Version="11.2.1" />
+    <PackageReference Include="System.Windows.Extensions" Version="8.0.0" />
+  </ItemGroup>
+
+  <!-- Udostępnia wewnętrzną metodę PlaceFood testom jednostkowym. -->
+  <ItemGroup>
+    <InternalsVisibleTo Include="SnakeGame.Tests" />
   </ItemGroup>
 
 </Project>

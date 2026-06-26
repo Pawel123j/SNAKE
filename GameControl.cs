@@ -9,17 +9,20 @@ namespace ElegantSnake
 {
     /// <summary>
     /// Kontrolka gry — spina logikę (<see cref="SnakeGame"/>) z rysowaniem
-    /// (<see cref="GameRenderer"/>), obsługuje czasomierze, klawiaturę i stany ekranów.
+    /// (<see cref="GameRenderer"/>), obsługuje czasomierze, klawiaturę, dźwięki,
+    /// wybór poziomu trudności i tabelę wyników.
     /// </summary>
     public sealed class GameControl : Control
     {
         private readonly DispatcherTimer gameTimer;
         private readonly DispatcherTimer pulseTimer;
-        private readonly SnakeGame game = new SnakeGame();
         private readonly GameRenderer renderer = new GameRenderer();
+        private readonly Scoreboard scoreboard = new Scoreboard();
+        private readonly SoundManager sound = new SoundManager();
+        private SnakeGame game;
 
         private GamePhase phase = GamePhase.Ready;
-        private int bestScore;
+        private Difficulty difficulty = Difficulty.Normal;
         private double foodPulse;
         private double backgroundShift;
 
@@ -29,26 +32,21 @@ namespace ElegantSnake
             Height = GameConfig.BoardPixelHeight;
             Focusable = true;
 
-            gameTimer = new DispatcherTimer
-            {
-                Interval = TimeSpan.FromMilliseconds(GameConfig.StartIntervalMs)
-            };
+            scoreboard.Load();
+            game = new SnakeGame(DifficultySettings.For(difficulty));
+
+            gameTimer = new DispatcherTimer();
             gameTimer.Tick += (_, _) => OnGameTick();
 
             // Osobny czasomierz animacji (puls jedzenia, ruch tła) działa zawsze —
             // także na ekranie startowym i pauzie.
-            pulseTimer = new DispatcherTimer
-            {
-                Interval = TimeSpan.FromMilliseconds(16)
-            };
+            pulseTimer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(16) };
             pulseTimer.Tick += (_, _) =>
             {
                 foodPulse += 0.10;
                 backgroundShift += 0.008;
                 InvalidateVisual();
             };
-
-            bestScore = HighScoreStore.Load();
             pulseTimer.Start();
 
             // Po dodaniu do okna przejmujemy fokus, żeby łapać klawisze.
@@ -57,8 +55,9 @@ namespace ElegantSnake
 
         private void StartNewGame()
         {
-            game.Reset();
-            gameTimer.Interval = TimeSpan.FromMilliseconds(GameConfig.StartIntervalMs);
+            DifficultySettings settings = DifficultySettings.For(difficulty);
+            game.Reset(settings);
+            gameTimer.Interval = TimeSpan.FromMilliseconds(settings.StartIntervalMs);
             phase = GamePhase.Playing;
             gameTimer.Start();
             InvalidateVisual();
@@ -74,15 +73,8 @@ namespace ElegantSnake
             switch (result)
             {
                 case StepResult.Ate:
-                    if (game.Score > bestScore)
-                        bestScore = game.Score;
-
-                    // Każdy zjedzony owoc lekko przyspiesza grę.
-                    double current = gameTimer.Interval.TotalMilliseconds;
-                    if (current > GameConfig.MinIntervalMs)
-                        gameTimer.Interval = TimeSpan.FromMilliseconds(current - 1);
+                    ApplyFoodEffect();
                     break;
-
                 case StepResult.Died:
                     EndGame();
                     break;
@@ -91,15 +83,38 @@ namespace ElegantSnake
             InvalidateVisual();
         }
 
+        private void ApplyFoodEffect()
+        {
+            double interval = gameTimer.Interval.TotalMilliseconds;
+            DifficultySettings settings = game.Settings;
+
+            switch (game.LastEaten)
+            {
+                case FoodType.Bonus:
+                    sound.Bonus();
+                    interval = Math.Max(settings.MinIntervalMs, interval - 1);
+                    break;
+
+                case FoodType.Slow:
+                    sound.Slow();
+                    interval = Math.Min(settings.StartIntervalMs, interval + 14);
+                    break;
+
+                default:
+                    sound.Eat();
+                    interval = Math.Max(settings.MinIntervalMs, interval - 1);
+                    break;
+            }
+
+            gameTimer.Interval = TimeSpan.FromMilliseconds(interval);
+        }
+
         private void EndGame()
         {
             phase = GamePhase.GameOver;
             gameTimer.Stop();
-
-            if (game.Score > bestScore)
-                bestScore = game.Score;
-
-            HighScoreStore.Save(bestScore);
+            scoreboard.Add(game.Score);
+            sound.GameOver();
             InvalidateVisual();
         }
 
@@ -149,6 +164,9 @@ namespace ElegantSnake
 
         private void HandleReadyKeys(KeyEventArgs e)
         {
+            if (TrySelectDifficulty(e.Key))
+                return;
+
             if (TryGetDirection(e.Key, out Direction direction))
             {
                 StartNewGame();
@@ -168,6 +186,25 @@ namespace ElegantSnake
                 TogglePause();
             else if (e.Key == Key.R)
                 StartNewGame();
+        }
+
+        private bool TrySelectDifficulty(Key key)
+        {
+            Difficulty? chosen = key switch
+            {
+                Key.D1 or Key.NumPad1 => Difficulty.Easy,
+                Key.D2 or Key.NumPad2 => Difficulty.Normal,
+                Key.D3 or Key.NumPad3 => Difficulty.Hard,
+                _ => null
+            };
+
+            if (chosen is null)
+                return false;
+
+            difficulty = chosen.Value;
+            game.Reset(DifficultySettings.For(difficulty)); // odśwież podgląd planszy
+            InvalidateVisual();
+            return true;
         }
 
         private static bool TryGetDirection(Key key, out Direction direction)
@@ -199,7 +236,7 @@ namespace ElegantSnake
         public override void Render(DrawingContext context)
         {
             base.Render(context);
-            var ctx = new RenderContext(bestScore, foodPulse, backgroundShift, phase);
+            var ctx = new RenderContext(scoreboard.Scores, foodPulse, backgroundShift, phase, difficulty);
             renderer.Draw(context, new Size(GameConfig.BoardPixelWidth, GameConfig.BoardPixelHeight), game, ctx);
         }
     }
