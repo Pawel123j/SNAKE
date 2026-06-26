@@ -1,0 +1,8 @@
+# Wyniki kompilacji .NET
+bin/
+obj/
+
+# Pliki użytkownika Visual Studio / Rider
+*.user
+.vs/
+.idea/
