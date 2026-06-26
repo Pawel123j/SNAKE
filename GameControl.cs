@@ -1,70 +1,67 @@
 using System;
-using System.Drawing;
-using System.Windows.Forms;
+using Avalonia;
+using Avalonia.Controls;
+using Avalonia.Input;
+using Avalonia.Media;
+using Avalonia.Threading;
 
 namespace ElegantSnake
 {
     /// <summary>
-    /// Okno gry — spina logikę (<see cref="SnakeGame"/>) z rysowaniem
+    /// Kontrolka gry — spina logikę (<see cref="SnakeGame"/>) z rysowaniem
     /// (<see cref="GameRenderer"/>), obsługuje czasomierze, klawiaturę i stany ekranów.
     /// </summary>
-    public sealed class SnakeForm : Form
+    public sealed class GameControl : Control
     {
-        private readonly Timer gameTimer = new Timer();
-        private readonly Timer pulseTimer = new Timer();
+        private readonly DispatcherTimer gameTimer;
+        private readonly DispatcherTimer pulseTimer;
         private readonly SnakeGame game = new SnakeGame();
         private readonly GameRenderer renderer = new GameRenderer();
 
         private GamePhase phase = GamePhase.Ready;
         private int bestScore;
-        private float foodPulse;
-        private float backgroundShift;
+        private double foodPulse;
+        private double backgroundShift;
 
-        public SnakeForm()
+        public GameControl()
         {
-            Text = "Elegant Snake";
-            ClientSize = new Size(
-                GameConfig.GridSize * GameConfig.CellSize + GameConfig.BorderPadding * 2,
-                GameConfig.GridSize * GameConfig.CellSize + GameConfig.BorderPadding * 2 + GameConfig.TopHudHeight);
-            FormBorderStyle = FormBorderStyle.FixedSingle;
-            MaximizeBox = false;
-            MinimizeBox = true;
-            StartPosition = FormStartPosition.CenterScreen;
-            DoubleBuffered = true;
-            KeyPreview = true;
-            BackColor = Color.FromArgb(10, 12, 18);
-            Font = new Font("Segoe UI", 10f, FontStyle.Regular);
+            Width = GameConfig.BoardPixelWidth;
+            Height = GameConfig.BoardPixelHeight;
+            Focusable = true;
 
-            gameTimer.Interval = GameConfig.StartIntervalMs;
-            gameTimer.Tick += (_, __) => OnGameTick();
-
-            // Osobny czasomierz dla animacji (puls jedzenia, ruch tła) działa
-            // zawsze — także na ekranie startowym i pauzie.
-            pulseTimer.Interval = 16;
-            pulseTimer.Tick += (_, __) =>
+            gameTimer = new DispatcherTimer
             {
-                foodPulse += 0.10f;
-                backgroundShift += 0.008f;
-                Invalidate();
+                Interval = TimeSpan.FromMilliseconds(GameConfig.StartIntervalMs)
+            };
+            gameTimer.Tick += (_, _) => OnGameTick();
+
+            // Osobny czasomierz animacji (puls jedzenia, ruch tła) działa zawsze —
+            // także na ekranie startowym i pauzie.
+            pulseTimer = new DispatcherTimer
+            {
+                Interval = TimeSpan.FromMilliseconds(16)
+            };
+            pulseTimer.Tick += (_, _) =>
+            {
+                foodPulse += 0.10;
+                backgroundShift += 0.008;
+                InvalidateVisual();
             };
 
-            KeyDown += OnKeyDown;
-            Shown += (_, __) =>
-            {
-                bestScore = HighScoreStore.Load();
-                phase = GamePhase.Ready;
-                pulseTimer.Start();
-                Invalidate();
-            };
+            bestScore = HighScoreStore.Load();
+            pulseTimer.Start();
+
+            // Po dodaniu do okna przejmujemy fokus, żeby łapać klawisze.
+            Loaded += (_, _) => Focus();
         }
 
         private void StartNewGame()
         {
             game.Reset();
-            gameTimer.Interval = GameConfig.StartIntervalMs;
+            gameTimer.Interval = TimeSpan.FromMilliseconds(GameConfig.StartIntervalMs);
             phase = GamePhase.Playing;
             gameTimer.Start();
-            Invalidate();
+            InvalidateVisual();
         }
 
         private void OnGameTick()
@@ -81,8 +78,9 @@ namespace ElegantSnake
                         bestScore = game.Score;
 
                     // Każdy zjedzony owoc lekko przyspiesza grę.
-                    if (gameTimer.Interval > GameConfig.MinIntervalMs)
-                        gameTimer.Interval -= 1;
+                    double current = gameTimer.Interval.TotalMilliseconds;
+                    if (current > GameConfig.MinIntervalMs)
+                        gameTimer.Interval = TimeSpan.FromMilliseconds(current - 1);
                     break;
 
                 case StepResult.Died:
@@ -90,7 +88,7 @@ namespace ElegantSnake
                     break;
             }
 
-            Invalidate();
+            InvalidateVisual();
         }
 
         private void EndGame()
@@ -102,7 +100,7 @@ namespace ElegantSnake
                 bestScore = game.Score;
 
             HighScoreStore.Save(bestScore);
-            Invalidate();
+            InvalidateVisual();
         }
 
         private void TogglePause()
@@ -118,11 +116,13 @@ namespace ElegantSnake
                 gameTimer.Start();
             }
 
-            Invalidate();
+            InvalidateVisual();
         }
 
-        private void OnKeyDown(object? sender, KeyEventArgs e)
+        protected override void OnKeyDown(KeyEventArgs e)
         {
+            base.OnKeyDown(e);
+
             switch (phase)
             {
                 case GamePhase.Ready:
@@ -134,25 +134,27 @@ namespace ElegantSnake
                     break;
 
                 case GamePhase.Paused:
-                    if (e.KeyCode is Keys.P or Keys.Escape)
+                    if (e.Key is Key.P or Key.Escape)
                         TogglePause();
                     break;
 
                 case GamePhase.GameOver:
-                    if (e.KeyCode is Keys.Enter or Keys.Space or Keys.R)
+                    if (e.Key is Key.Enter or Key.Space or Key.R)
                         StartNewGame();
                     break;
             }
+
+            e.Handled = true;
         }
 
         private void HandleReadyKeys(KeyEventArgs e)
         {
-            if (TryGetDirection(e.KeyCode, out Direction direction))
+            if (TryGetDirection(e.Key, out Direction direction))
             {
                 StartNewGame();
                 game.SetDirection(direction);
             }
-            else if (e.KeyCode is Keys.Enter or Keys.Space)
+            else if (e.Key is Key.Enter or Key.Space)
             {
                 StartNewGame();
             }
@@ -160,32 +162,32 @@ namespace ElegantSnake
 
         private void HandlePlayingKeys(KeyEventArgs e)
         {
-            if (TryGetDirection(e.KeyCode, out Direction direction))
+            if (TryGetDirection(e.Key, out Direction direction))
                 game.SetDirection(direction);
-            else if (e.KeyCode is Keys.P or Keys.Escape)
+            else if (e.Key is Key.P or Key.Escape)
                 TogglePause();
-            else if (e.KeyCode == Keys.R)
+            else if (e.Key == Key.R)
                 StartNewGame();
         }
 
-        private static bool TryGetDirection(Keys key, out Direction direction)
+        private static bool TryGetDirection(Key key, out Direction direction)
         {
             switch (key)
             {
-                case Keys.Up:
-                case Keys.W:
+                case Key.Up:
+                case Key.W:
                     direction = Direction.Up;
                     return true;
-                case Keys.Down:
-                case Keys.S:
+                case Key.Down:
+                case Key.S:
                     direction = Direction.Down;
                     return true;
-                case Keys.Left:
-                case Keys.A:
+                case Key.Left:
+                case Key.A:
                     direction = Direction.Left;
                     return true;
-                case Keys.Right:
-                case Keys.D:
+                case Key.Right:
+                case Key.D:
                     direction = Direction.Right;
                     return true;
                 default:
@@ -194,22 +196,11 @@ namespace ElegantSnake
             }
         }
 
-        protected override void OnPaint(PaintEventArgs e)
+        public override void Render(DrawingContext context)
         {
-            base.OnPaint(e);
+            base.Render(context);
             var ctx = new RenderContext(bestScore, foodPulse, backgroundShift, phase);
-            renderer.Draw(e.Graphics, ClientRectangle, game, ctx);
-        }
-
-        protected override void Dispose(bool disposing)
-        {
-            if (disposing)
-            {
-                gameTimer.Dispose();
-                pulseTimer.Dispose();
-            }
-
-            base.Dispose(disposing);
+            renderer.Draw(context, new Size(GameConfig.BoardPixelWidth, GameConfig.BoardPixelHeight), game, ctx);
         }
     }
 }

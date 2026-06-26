@@ -1,19 +1,20 @@
 using System;
-using System.Windows.Forms;
+using Avalonia;
 
 namespace ElegantSnake
 {
-    /// <summary>
-    /// Punkt wejścia aplikacji — uruchamia okno z grą.
-    /// </summary>
+    /// <summary>Punkt wejścia aplikacji Avalonia.</summary>
     internal static class Program
     {
         [STAThread]
-        static void Main()
-        {
-            Application.EnableVisualStyles();
-            Application.SetCompatibleTextRenderingDefault(false);
-            Application.Run(new SnakeForm());
-        }
+        public static void Main(string[] args) => BuildAvaloniaApp()
+            .StartWithClassicDesktopLifetime(args);
+
+        /// <summary>Konfiguracja Avalonii (używana też przez narzędzia projektowe).</summary>
+        public static AppBuilder BuildAvaloniaApp()
+            => AppBuilder.Configure<App>()
+                .UsePlatformDetect()
+                .WithInterFont()
+                .LogToTrace();
     }
 }

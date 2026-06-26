@@ -26,5 +26,11 @@ namespace ElegantSnake
 
         /// <summary>Liczba punktów za zjedzenie jednego owocu.</summary>
         public const int PointsPerFood = 10;
+
+        /// <summary>Szerokość całego obszaru gry w pikselach.</summary>
+        public const int BoardPixelWidth = GridSize * CellSize + BorderPadding * 2;
+
+        /// <summary>Wysokość całego obszaru gry w pikselach (plansza + HUD).</summary>
+        public const int BoardPixelHeight = GridSize * CellSize + BorderPadding * 2 + TopHudHeight;
     }
 }

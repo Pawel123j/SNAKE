@@ -1,4 +1,4 @@
-using System.Drawing;
+using Avalonia;
 
 namespace ElegantSnake
 {
@@ -6,7 +6,7 @@ namespace ElegantSnake
     public static class BoardGeometry
     {
         /// <summary>Prostokąt całej planszy w pikselach.</summary>
-        public static Rectangle BoardRect => new Rectangle(
+        public static Rect BoardRect => new Rect(
             GameConfig.BorderPadding,
             GameConfig.TopHudHeight,
             GameConfig.GridSize * GameConfig.CellSize,
@@ -16,10 +16,10 @@ namespace ElegantSnake
         /// Zamienia komórkę siatki na prostokąt w pikselach, opcjonalnie
         /// zmniejszony o margines <paramref name="inset"/> z każdej strony.
         /// </summary>
-        public static Rectangle CellToRect(Point cell, int inset)
+        public static Rect CellToRect(PixelPoint cell, double inset)
         {
-            Rectangle board = BoardRect;
-            return new Rectangle(
+            Rect board = BoardRect;
+            return new Rect(
                 board.X + cell.X * GameConfig.CellSize + inset,
                 board.Y + cell.Y * GameConfig.CellSize + inset,
                 GameConfig.CellSize - inset * 2,

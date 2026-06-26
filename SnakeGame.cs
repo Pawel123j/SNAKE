@@ -1,7 +1,7 @@
 using System;
 using System.Collections.Generic;
-using System.Drawing;
 using System.Linq;
+using Avalonia;
 
 namespace ElegantSnake
 {
@@ -20,12 +20,13 @@ namespace ElegantSnake
 
     /// <summary>
     /// Czysta logika gry — bez rysowania. Odpowiada za węża, jedzenie,
-    /// kolizje i wynik. Dzięki temu zasady gry są niezależne od UI.
+    /// kolizje i wynik. Współrzędne komórek trzymamy w <see cref="PixelPoint"/>
+    /// (lekki, całkowitoliczbowy typ Avalonii).
     /// </summary>
     public sealed class SnakeGame
     {
         private readonly Random random = new Random();
-        private readonly List<Point> snake = new List<Point>();
+        private readonly List<PixelPoint> snake = new List<PixelPoint>();
         private Direction nextDirection;
 
         public SnakeGame()
@@ -34,10 +35,10 @@ namespace ElegantSnake
         }
 
         /// <summary>Segmenty węża — głowa jest pod indeksem 0.</summary>
-        public IReadOnlyList<Point> Snake => snake;
+        public IReadOnlyList<PixelPoint> Snake => snake;
 
-        /// <summary>Aktualna pozycja owocu.</summary>
-        public Point Food { get; private set; }
+        /// <summary>Aktualna pozycja owocu (we współrzędnych siatki).</summary>
+        public PixelPoint Food { get; private set; }
 
         /// <summary>Kierunek, w którym wąż faktycznie się porusza.</summary>
         public Direction CurrentDirection { get; private set; }
@@ -49,10 +50,10 @@ namespace ElegantSnake
         public void Reset()
         {
             snake.Clear();
-            snake.Add(new Point(8, 12));
-            snake.Add(new Point(7, 12));
-            snake.Add(new Point(6, 12));
-            snake.Add(new Point(5, 12));
+            snake.Add(new PixelPoint(8, 12));
+            snake.Add(new PixelPoint(7, 12));
+            snake.Add(new PixelPoint(6, 12));
+            snake.Add(new PixelPoint(5, 12));
 
             CurrentDirection = Direction.Right;
             nextDirection = Direction.Right;
@@ -83,13 +84,13 @@ namespace ElegantSnake
         {
             CurrentDirection = nextDirection;
 
-            Point head = snake[0];
-            Point newHead = CurrentDirection switch
+            PixelPoint head = snake[0];
+            PixelPoint newHead = CurrentDirection switch
             {
-                Direction.Up => new Point(head.X, head.Y - 1),
-                Direction.Down => new Point(head.X, head.Y + 1),
-                Direction.Left => new Point(head.X - 1, head.Y),
-                _ => new Point(head.X + 1, head.Y)
+                Direction.Up => new PixelPoint(head.X, head.Y - 1),
+                Direction.Down => new PixelPoint(head.X, head.Y + 1),
+                Direction.Left => new PixelPoint(head.X - 1, head.Y),
+                _ => new PixelPoint(head.X + 1, head.Y)
             };
 
             if (newHead.X < 0 || newHead.X >= GameConfig.GridSize ||
@@ -99,7 +100,7 @@ namespace ElegantSnake
             }
 
             bool grows = newHead == Food;
-            IEnumerable<Point> bodyToCheck = grows ? snake : snake.Take(snake.Count - 1);
+            IEnumerable<PixelPoint> bodyToCheck = grows ? snake : snake.Take(snake.Count - 1);
             if (bodyToCheck.Contains(newHead))
                 return StepResult.Died;
 
@@ -118,10 +119,10 @@ namespace ElegantSnake
 
         private void SpawnFood()
         {
-            Point candidate;
+            PixelPoint candidate;
             do
             {
-                candidate = new Point(
+                candidate = new PixelPoint(
                     random.Next(0, GameConfig.GridSize),
                     random.Next(0, GameConfig.GridSize));
             }
