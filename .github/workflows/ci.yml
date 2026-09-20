@@ -1,0 +1,42 @@
+name: CI
+
+on:
+  push:
+    branches: ["**"]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  build-and-test:
+    name: ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      # Bez tego pierwszy czerwony system przerywa drugi i nie wiadomo, czy
+      # problem jest ogólny, czy dotyczy jednej platformy. W projekcie, który
+      # został przeniesiony z WinForms na Avalonię właśnie po to, żeby działać
+      # wieloplatformowo, to najważniejsza informacja z przebiegu.
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+
+      # Repozytorium nie ma pliku rozwiązania, a projekt testowy leży
+      # w podkatalogu — `dotnet restore` w korzeniu obsłużyłby tylko samą
+      # aplikację. Dlatego każdy projekt jest wskazany wprost.
+      - name: Build aplikacji
+        run: dotnet build Snake.csproj --configuration Release
+
+      - name: Build testów
+        # Projekt testowy ma ProjectReference do aplikacji, więc buduje oba.
+        run: dotnet build tests/SnakeGame.Tests/SnakeGame.Tests.csproj --configuration Release
+
+      - name: Testy
+        run: dotnet test tests/SnakeGame.Tests/SnakeGame.Tests.csproj --configuration Release --no-build --verbosity normal

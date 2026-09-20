@@ -1,5 +1,7 @@
 # Elegant Snake
 
+[![CI](https://github.com/Pawel123j/SNAKE/actions/workflows/ci.yml/badge.svg)](https://github.com/Pawel123j/SNAKE/actions/workflows/ci.yml)
+
 Klasyczny Snake w C# na **[Avalonia UI](https://avaloniaui.net/)** — wieloplatformowym
 frameworku .NET. Gra działa na **Windows, Linux i macOS**, ma dopracowaną oprawę
 graficzną (gradienty, zaokrąglenia, poświaty), poziomy trudności, przeszkody,
@@ -61,12 +63,59 @@ i rozwijać niezależnie.
 Wymagany [.NET SDK 8.0](https://dotnet.microsoft.com/download) (dowolny system).
 
 ```bash
-dotnet run            # uruchom grę
-dotnet test tests/SnakeGame.Tests   # uruchom testy logiki
+dotnet run                                                   # uruchom grę
+dotnet test tests/SnakeGame.Tests/SnakeGame.Tests.csproj     # 31 testów logiki
+dotnet build Snake.csproj -c Release                         # wersja wydania
 ```
 
-Budowa wersji wydania:
+> Repozytorium nie ma pliku rozwiązania, a projekt testowy leży w podkatalogu,
+> więc polecenia wskazują projekty wprost. `dotnet restore` w korzeniu
+> obsłużyłby tylko samą aplikację.
+
+### Gotowy plik do pobrania
+
+Każde wydanie zawiera samodzielne binarki dla Windowsa (x64) i Linuksa (x64) —
+`self-contained`, więc **nie trzeba mieć zainstalowanego .NET**. Do wydania
+dołączony jest `SHA256SUMS.txt`.
+
+Wydanie powstaje z tagu:
 
 ```bash
-dotnet build -c Release
+git tag v1.0.0 && git push origin v1.0.0
 ```
+
+## Testy i CI
+
+31 testów czystej logiki, bez uruchamiania interfejsu:
+
+| Plik | Co sprawdza |
+|---|---|
+| `SnakeGameTests` (9) | ruch, zakaz zawrócenia, wzrost, punktacja zwykła i bonusowa, ściana, owijanie, obecność przeszkód |
+| `SnakeGameCollisionTests` (14) | kolizja z własnym ciałem, ściany w pionie, owijanie w obu osiach, niezmienniki przeszkód, punktacja spowalniacza i sumowanie wyniku, reset, obsługa kierunku |
+| `ScoreboardTests` (8) | sortowanie, limit pięciu wpisów, odrzucanie wyników ≤ 0, zapis i odczyt, odporność na uszkodzony plik |
+
+CI buduje i uruchamia testy na **Ubuntu i Windowsie**, z `fail-fast: false` —
+w projekcie przeniesionym z WinForms na Avalonię właśnie po to, żeby działał
+wieloplatformowo, najważniejszą informacją z przebiegu jest to, czy problem
+dotyczy obu systemów, czy jednego.
+
+### Dźwięk działa tylko na Windowsie
+
+To jest znane ograniczenie, nie błąd. `SoundManager` generuje krótkie tony
+w pamięci i odtwarza je przez `System.Media.SoundPlayer`, który istnieje
+wyłącznie na Windowsie. Na Linuksie i macOS dźwięki są **po cichu pomijane** —
+gra działa normalnie, tylko bez efektów.
+
+Pełne, wieloplatformowe audio wymagałoby dodatkowej biblioteki (NAudio,
+OpenAL albo Avalonia z natywnym backendem). Nie zostało dodane świadomie:
+byłaby to nowa zależność w projekcie, który poza tym nie ma żadnej poza
+Avalonią, dla funkcji ozdobnej.
+
+## Zrzuty ekranu
+
+Katalog `docs/screenshots/` jest pusty — patrz
+[docs/screenshots/README.md](docs/screenshots/README.md).
+
+## Licencja
+
+MIT — patrz [LICENSE](LICENSE).

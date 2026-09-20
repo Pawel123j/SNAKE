@@ -13,13 +13,34 @@ namespace ElegantSnake
     {
         public const int MaxEntries = 5;
 
-        private static readonly string DirectoryPath = Path.Combine(
+        private static readonly string DefaultDirectoryPath = Path.Combine(
             Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
             "ElegantSnake");
 
-        private static readonly string FilePath = Path.Combine(DirectoryPath, "scores.txt");
-
+        private readonly string directoryPath;
+        private readonly string filePath;
         private readonly List<int> scores = new List<int>();
+
+        /// <summary>Tabela wyników w standardowym katalogu danych aplikacji.</summary>
+        public Scoreboard() : this(DefaultDirectoryPath)
+        {
+        }
+
+        /// <summary>
+        /// Tabela wyników we wskazanym katalogu.
+        /// </summary>
+        /// <remarks>
+        /// Katalog był wcześniej zaszyty na stałe, przez co testy tej klasy
+        /// pisałyby do prawdziwego pliku gracza — nadpisując jego rekordy
+        /// i zależąc od tego, co już tam leży. Możliwość wskazania katalogu
+        /// jest tu wyłącznie po to, żeby dało się ją przetestować w izolacji;
+        /// gra używa konstruktora bezparametrowego.
+        /// </remarks>
+        internal Scoreboard(string directoryPath)
+        {
+            this.directoryPath = directoryPath;
+            filePath = Path.Combine(directoryPath, "scores.txt");
+        }
 
         /// <summary>Wyniki posortowane malejąco (najlepszy pierwszy).</summary>
         public IReadOnlyList<int> Scores => scores;
@@ -33,9 +54,9 @@ namespace ElegantSnake
             scores.Clear();
             try
             {
-                if (File.Exists(FilePath))
+                if (File.Exists(filePath))
                 {
-                    foreach (string line in File.ReadAllLines(FilePath))
+                    foreach (string line in File.ReadAllLines(filePath))
                         if (int.TryParse(line, out int value) && value > 0)
                             scores.Add(value);
 
@@ -74,8 +95,8 @@ namespace ElegantSnake
         {
             try
             {
-                Directory.CreateDirectory(DirectoryPath);
-                File.WriteAllLines(FilePath, scores.Select(s => s.ToString()));
+                Directory.CreateDirectory(directoryPath);
+                File.WriteAllLines(filePath, scores.Select(s => s.ToString()));
             }
             catch
             {
