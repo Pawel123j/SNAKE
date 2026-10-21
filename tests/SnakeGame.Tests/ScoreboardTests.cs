@@ -109,6 +109,39 @@ namespace ElegantSnake.Tests
         }
 
         [Fact]
+        public void ScoredGame_SurvivesANewScoreboardInstance()
+        {
+            var game = new SnakeGame(DifficultySettings.For(Difficulty.Normal));
+            game.PlaceFood(new Avalonia.PixelPoint(9, 12), FoodType.Bonus);
+            Assert.Equal(StepResult.Ate, game.Step());
+            game.PlaceFood(new Avalonia.PixelPoint(10, 12), FoodType.Normal);
+            Assert.Equal(StepResult.Ate, game.Step());
+            NewBoard().Add(game.Score);
+            var reopened = NewBoard();
+            reopened.Load();
+            Assert.Equal(40, reopened.Best);
+            Assert.Empty(Directory.GetFiles(workDir, ".scores-*.tmp"));
+        }
+
+        [Fact]
+        public void FailedWrite_PreservesThePreviousScoreFile()
+        {
+            if (!OperatingSystem.IsLinux()) return;
+            var board = NewBoard();
+            board.Add(40);
+            var previousMode = File.GetUnixFileMode(workDir);
+            File.SetUnixFileMode(workDir, UnixFileMode.UserRead | UnixFileMode.UserExecute);
+            try
+            {
+                board.Add(80);
+                var reloaded = NewBoard();
+                reloaded.Load();
+                Assert.Equal(40, reloaded.Best);
+            }
+            finally { File.SetUnixFileMode(workDir, previousMode); }
+        }
+
+        [Fact]
         public void Load_OnMissingFile_LeavesBoardEmpty()
         {
             var board = NewBoard();

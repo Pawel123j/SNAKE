@@ -6,3 +6,7 @@ obj/
 *.user
 .vs/
 .idea/
+
+# Local GUI regression screenshots
+gui-artifacts/
+__pycache__/

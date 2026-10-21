@@ -119,3 +119,37 @@ Katalog `docs/screenshots/` jest pusty — patrz
 ## Licencja
 
 MIT — patrz [LICENSE](LICENSE).
+
+## Weryfikacja środowiska — 2026-10-17
+
+`dotnet test tests/SnakeGame.Tests/SnakeGame.Tests.csproj --configuration Release` zalicza 31 testów logiki; build Release działa. Testy obejmują reguły gry, ale nie potwierdzają sterowania, renderowania ani dźwięku w działającym oknie.
+
+W środowisku bez wyświetlacza/Xvfb nie wykonano GUI ani walidacji paczki na Windows/macOS. Repozytorium ma CI i workflow wydania; nie uruchomiono publikacji. Przed dystrybucją sprawdź menu, pauzę, restart, kolizje i zapis wyników na docelowym systemie. Wyników użytkownika nie należy usuwać przy aktualizacji; rollback polega na przywróceniu poprzedniej binarki z zachowaniem danych.
+
+## Walidacja etapu 2 — 2026-10-18
+
+Renderer używa teraz jawnie dołączonego fontu Inter. Na badanym Linuksie wymuszenie Segoe UI, a także domyślny fallback, dawało działającą planszę z niewidocznym tekstem.
+
+Po `dotnet build -c Release` uruchom w izolowanym ekranie X11: `xvfb-run -a python scripts/smoke_gui.py --output gui-artifacts` (Python + Pillow, Xvfb, xdotool). Test uruchamia własny proces, wysyła start/pauzę/wznowienie/restart, zapisuje cztery zrzuty i sprawdza wyrenderowany tekst. Nie steruje już otwartym oknem. CI ma ten krok na Linuksie. Lokalnie: 31 testów logiki i ten test GUI PASS. Nie potwierdzono Windows, dźwięku ani pełnego przebiegu punktacji w wydanej paczce.
+
+## Etap 3 — 2026-10-21
+
+33 testy PASS. Rekordy są zapisywane przez plik tymczasowy, flush i atomową
+zamianę. Błąd zapisu pozostawia poprzedni kompletny plik. Naprawiono też wybór
+katalogu danych: nieistniejący XDG_CONFIG_HOME nie powoduje już zapisu względem
+katalogu uruchomienia gry.
+
+Audyt wykazał GHSA-xrw6-gwf8-vvr9 (high) w Tmds.DBus.Protocol 0.20.0.
+Przypięto zgodną gałąź poprawki 0.21.3; audyt NuGet aplikacji i testów na
+2026-10-21 nie wykazuje znanych podatności. Restore blokuje high/critical.
+
+Linux X11: menu 1/2/3, start, pauza, wznowienie i restart PASS. Pełny test
+`scripts/scored_gui.py` steruje rzeczywistym oknem na podstawie pikseli planszy,
+zbiera jedzenie, kończy grę, sprawdza zapis i uruchamia nowy proces. OCR nagłówka
+potwierdził odczyt rekordu (ostatni przebieg: 5 punktów). Nie zmienia stanu gry
+ani nie podstawia pliku z rekordem. Uruchom po buildzie na izolowanym DISPLAY:
+`python scripts/scored_gui.py --output NOWY_KATALOG` (Pillow, xdotool, tesseract).
+
+Windows x64 self-contained/single-file został zbudowany po poprawkach.
+**Nie uruchomiono go na Windows; dźwięk Windows pozostaje niezweryfikowany.**
+Dlatego projekt nadal PARTIAL. Linux celowo nie odtwarza audio.

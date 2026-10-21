@@ -9,6 +9,9 @@
     <AvaloniaUseCompiledBindingsByDefault>true</AvaloniaUseCompiledBindingsByDefault>
     <RootNamespace>ElegantSnake</RootNamespace>
     <AssemblyName>Snake</AssemblyName>
+    <NuGetAudit>true</NuGetAudit>
+    <NuGetAuditMode>all</NuGetAuditMode>
+    <WarningsAsErrors>$(WarningsAsErrors);NU1903;NU1904</WarningsAsErrors>
   </PropertyGroup>
 
   <!-- Folder z testami ma własny projekt; nie kompilujemy go do aplikacji. -->
@@ -22,6 +25,8 @@
     <PackageReference Include="Avalonia.Themes.Fluent" Version="11.2.1" />
     <PackageReference Include="Avalonia.Fonts.Inter" Version="11.2.1" />
     <PackageReference Include="System.Windows.Extensions" Version="8.0.0" />
+    <!-- Security branch fixing GHSA-xrw6-gwf8-vvr9; retain Avalonia 11.2 API. -->
+    <PackageReference Include="Tmds.DBus.Protocol" Version="0.21.3" />
   </ItemGroup>
 
   <!-- Udostępnia wewnętrzną metodę PlaceFood testom jednostkowym. -->

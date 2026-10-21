@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Text;
 
 namespace ElegantSnake
 {
@@ -14,7 +15,7 @@ namespace ElegantSnake
         public const int MaxEntries = 5;
 
         private static readonly string DefaultDirectoryPath = Path.Combine(
-            Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
+            Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData, Environment.SpecialFolderOption.DoNotVerify),
             "ElegantSnake");
 
         private readonly string directoryPath;
@@ -93,14 +94,29 @@ namespace ElegantSnake
 
         private void Save()
         {
+            string temporary = Path.Combine(directoryPath, ".scores-" + Guid.NewGuid().ToString("N") + ".tmp");
             try
             {
                 Directory.CreateDirectory(directoryPath);
-                File.WriteAllLines(filePath, scores.Select(s => s.ToString()));
+                using (var stream = new FileStream(temporary, FileMode.CreateNew, FileAccess.Write, FileShare.None))
+                {
+                    using (var writer = new StreamWriter(stream, new UTF8Encoding(false), 1024, leaveOpen: true))
+                    {
+                        foreach (int score in scores) writer.WriteLine(score);
+                        writer.Flush();
+                    }
+                    stream.Flush(flushToDisk: true);
+                }
+                // Same-directory replacement keeps the previous complete file if writing fails.
+                File.Move(temporary, filePath, overwrite: true);
             }
-            catch
+            catch (IOException) { }
+            catch (UnauthorizedAccessException) { }
+            finally
             {
-                // Zapis to tylko miły dodatek — błąd nie może wywrócić gry.
+                try { File.Delete(temporary); }
+                catch (IOException) { }
+                catch (UnauthorizedAccessException) { }
             }
         }
     }

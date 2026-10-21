@@ -322,11 +322,13 @@ namespace ElegantSnake
         }
 
         private static FormattedText Text(string s, double size, IBrush brush, FontWeight weight = FontWeight.Normal)
+            // Use the shipped font explicitly: Segoe UI/system fallback can be
+            // absent on Linux, leaving a playable board with invisible text.
             => new FormattedText(
                 s,
                 CultureInfo.CurrentCulture,
                 FlowDirection.LeftToRight,
-                new Typeface("Segoe UI", FontStyle.Normal, weight),
+                new Typeface("avares://Avalonia.Fonts.Inter/Assets#Inter", FontStyle.Normal, weight),
                 size,
                 brush);
 
