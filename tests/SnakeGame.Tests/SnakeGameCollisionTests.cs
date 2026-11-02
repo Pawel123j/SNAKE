@@ -1,4 +1,5 @@
 using System.Linq;
+using System.Threading.Tasks;
 using Avalonia;
 using Xunit;
 
@@ -19,6 +20,35 @@ namespace ElegantSnake.Tests
         /// zmieniło długości węża w trakcie testu.
         /// </summary>
         private static void ParkFood(SnakeGame game) => game.PlaceFood(new PixelPoint(0, 0), FoodType.Normal);
+
+        [Fact(Timeout = 2000)]
+        public async Task LastFreeCell_WinsAndKeepsFinalScoreUntilReset()
+        {
+            await Task.Run(() =>
+            {
+                var game = NewGame();
+                // A valid serpentine body filling every cell except the next head.
+                var body = (System.Collections.Generic.List<PixelPoint>)game.Snake;
+                body.Clear();
+                for (int y = 0; y < GameConfig.GridSize; y++)
+                    for (int i = 0; i < GameConfig.GridSize; i++)
+                    {
+                        int x = y % 2 == 0 ? GameConfig.GridSize - 1 - i : i;
+                        if (x != GameConfig.GridSize - 1 || y != 0)
+                            body.Add(new PixelPoint(x, y));
+                    }
+                game.PlaceFood(new PixelPoint(GameConfig.GridSize - 1, 0), FoodType.Bonus);
+                Assert.Equal(StepResult.Won, game.Step());
+                Assert.True(game.HasWon);
+                Assert.Equal(GameConfig.GridSize * GameConfig.GridSize, game.Snake.Count);
+                Assert.Equal(30, game.Score);
+                Assert.Equal(StepResult.Won, game.Step());
+                Assert.Equal(30, game.Score);
+                game.Reset(DifficultySettings.For(Difficulty.Normal));
+                Assert.False(game.HasWon);
+                Assert.Equal(0, game.Score);
+            });
+        }
 
         // ── Kolizja z własnym ciałem ────────────────────────────────────────
 

@@ -25,6 +25,7 @@ namespace ElegantSnake
         private Difficulty difficulty = Difficulty.Normal;
         private double foodPulse;
         private double backgroundShift;
+        private bool reducedMotion;
 
         public GameControl()
         {
@@ -51,6 +52,7 @@ namespace ElegantSnake
 
             // Po dodaniu do okna przejmujemy fokus, żeby łapać klawisze.
             Loaded += (_, _) => Focus();
+            DetachedFromVisualTree += (_, _) => { gameTimer.Stop(); pulseTimer.Stop(); };
         }
 
         private void StartNewGame()
@@ -74,6 +76,9 @@ namespace ElegantSnake
             {
                 case StepResult.Ate:
                     ApplyFoodEffect();
+                    break;
+                case StepResult.Won:
+                    EndGame(won: true);
                     break;
                 case StepResult.Died:
                     EndGame();
@@ -109,9 +114,9 @@ namespace ElegantSnake
             gameTimer.Interval = TimeSpan.FromMilliseconds(interval);
         }
 
-        private void EndGame()
+        private void EndGame(bool won = false)
         {
-            phase = GamePhase.GameOver;
+            phase = won ? GamePhase.Won : GamePhase.GameOver;
             gameTimer.Stop();
             scoreboard.Add(game.Score);
             sound.GameOver();
@@ -138,6 +143,16 @@ namespace ElegantSnake
         {
             base.OnKeyDown(e);
 
+            if (e.Key == Key.M)
+            {
+                reducedMotion = !reducedMotion;
+                if (reducedMotion) pulseTimer.Stop(); else pulseTimer.Start();
+                foodPulse = 0;
+                InvalidateVisual();
+                e.Handled = true;
+                return;
+            }
+
             switch (phase)
             {
                 case GamePhase.Ready:
@@ -153,6 +168,7 @@ namespace ElegantSnake
                         TogglePause();
                     break;
 
+                case GamePhase.Won:
                 case GamePhase.GameOver:
                     if (e.Key is Key.Enter or Key.Space or Key.R)
                         StartNewGame();

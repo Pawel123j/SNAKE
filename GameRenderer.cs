@@ -43,7 +43,7 @@ namespace ElegantSnake
             DrawHud(c, size, game.Score, best, game.Settings.Name);
             DrawBoard(c);
             DrawObstacles(c, game);
-            DrawFood(c, game.Food, game.FoodKind, ctx.FoodPulse);
+            if (!game.HasWon) DrawFood(c, game.Food, game.FoodKind, ctx.FoodPulse);
             DrawSnake(c, game);
 
             switch (ctx.Phase)
@@ -54,8 +54,9 @@ namespace ElegantSnake
                 case GamePhase.Paused:
                     DrawPause(c);
                     break;
+                case GamePhase.Won:
                 case GamePhase.GameOver:
-                    DrawGameOver(c, game.Score, ctx.Scores);
+                    DrawGameOver(c, game.Score, ctx.Scores, ctx.Phase == GamePhase.Won);
                     break;
             }
         }
@@ -223,7 +224,7 @@ namespace ElegantSnake
             DrawOption(c, cx, ref y, "3", "Trudny — przeszkody, szybciej", difficulty == Difficulty.Hard);
 
             y += 12;
-            DrawCentered(c, Text("ENTER lub strzałka — start", Pt(13), AccentBrush, FontWeight.Bold), cx, y); y += 38;
+            DrawCentered(c, Text("ENTER — start  •  M — ogranicz animacje", Pt(13), AccentBrush, FontWeight.Bold), cx, y); y += 38;
             DrawCentered(c, Text("Najlepsze wyniki", Pt(11), DimBrush), cx, y); y += 24;
             DrawScores(c, cx, ref y, scores);
         }
@@ -240,7 +241,7 @@ namespace ElegantSnake
             DrawCentered(c, Text("P / ESC — wznów grę", Pt(13), AccentBrush, FontWeight.Bold), cx, overlay.Y + 88);
         }
 
-        private void DrawGameOver(DrawingContext c, int score, IReadOnlyList<int> scores)
+        private void DrawGameOver(DrawingContext c, int score, IReadOnlyList<int> scores, bool won)
         {
             Rect board = BoardGeometry.BoardRect;
             double height = 320;
@@ -250,7 +251,7 @@ namespace ElegantSnake
             double cx = overlay.X + overlay.Width / 2;
             double y = overlay.Y + 26;
 
-            DrawCentered(c, Text("Game Over", Pt(24), TitleBrush, FontWeight.Bold), cx, y); y += 50;
+            DrawCentered(c, Text(won ? "Zwycięstwo!" : "Game Over", Pt(24), TitleBrush, FontWeight.Bold), cx, y); y += 50;
             DrawCentered(c, Text($"Wynik: {score}", Pt(14), AccentBrush, FontWeight.Bold), cx, y); y += 38;
             DrawCentered(c, Text("Najlepsze wyniki", Pt(11), DimBrush), cx, y); y += 24;
             DrawScores(c, cx, ref y, scores);
