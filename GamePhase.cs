@@ -13,6 +13,7 @@ namespace ElegantSnake
         Paused,
 
         /// <summary>Koniec gry.</summary>
-        GameOver
+        GameOver,
+        Won
     }
 }
