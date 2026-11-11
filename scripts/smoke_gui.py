@@ -1,5 +1,5 @@
 from pathlib import Path
-from PIL import ImageGrab
+from PIL import Image, ImageChops, ImageGrab
 import subprocess,os,time,json
 import argparse
 parser=argparse.ArgumentParser(description='Linux X11 smoke: run in an isolated Xvfb display.')
@@ -27,9 +27,17 @@ with (out/'app.log').open('w') as log:
    g={k:int(v) for k,v in (line.split('=') for line in geometry.splitlines())}
    ImageGrab.grab(bbox=(g['X'],g['Y'],g['X']+g['WIDTH'],g['Y']+g['HEIGHT']),xdisplay=e['DISPLAY']).save(out/(name+'.png'))
   time.sleep(.5);capture('ready')
+  # The Viewbox should keep the HUD and board inside a smaller resizable window.
+  subprocess.run([x,'windowsize','--sync',window,'400','450'],env=e,check=True,capture_output=True,timeout=3)
+  time.sleep(.3);capture('small-window')
+  with Image.open(out/'small-window.png') as shot:
+   assert shot.size == (400,450), 'Window did not resize to the requested smaller size'
+   header=shot.convert('RGB').crop((10,10,100,45))
+   assert sum(1 for rgb in header.get_flattened_data() if min(rgb)>180)>20, 'HUD text disappeared at smaller size'
+  subprocess.run([x,'windowsize','--sync',window,'660','738'],env=e,check=True,capture_output=True,timeout=3)
+  time.sleep(.3)
   for digit, label in [('1','easy'), ('2','normal'), ('3','hard')]:
    key(digit);time.sleep(.15);capture('menu-'+label)
-  from PIL import ImageChops, Image
   assert ImageChops.difference(Image.open(out/'menu-easy.png').convert('RGB'), Image.open(out/'menu-hard.png').convert('RGB')).getbbox(), 'Difficulty keys did not change the view'
   key('2');key('Return');time.sleep(.2);key('Escape');time.sleep(.2);capture('paused');key('Escape');time.sleep(4);capture('game-over');key('r');time.sleep(.2);key('Escape');time.sleep(.2);capture('restarted-paused')
   assert proc.poll() is None
@@ -37,8 +45,8 @@ with (out/'app.log').open('w') as log:
   from PIL import Image
   for state in ['ready','paused','game-over','restarted-paused']:
    with Image.open(out/(state+'.png')) as shot:
-    assert sum(1 for rgb in shot.convert('RGB').crop((20,15,145,55)).getdata() if min(rgb)>180)>100, 'Header text did not render: '+state
-  (out/'result.json').write_text(json.dumps({'window_created':True,'keys_sent':['1','2','3','2','Return','Escape','Escape','r','Escape'],'alive_after_restart':True,'screenshots':['ready','menu-easy','menu-normal','menu-hard','paused','game-over','restarted-paused'],'limitations':'No audio or Windows runtime validation; visual states require screenshot inspection.'},indent=2)+'\n')
+    assert sum(1 for rgb in shot.convert('RGB').crop((20,15,145,55)).get_flattened_data() if min(rgb)>180)>100, 'Header text did not render: '+state
+  (out/'result.json').write_text(json.dumps({'window_created':True,'small_window':[400,450],'keys_sent':['1','2','3','2','Return','Escape','Escape','r','Escape'],'alive_after_restart':True,'screenshots':['ready','small-window','menu-easy','menu-normal','menu-hard','paused','game-over','restarted-paused'],'limitations':'Linux X11 only; Windows and audio are unverified.'},indent=2)+'\n')
   print('Snake window, keyboard and restart screenshots saved.')
  finally:
   if proc.poll() is None:proc.terminate();proc.wait(timeout=10)

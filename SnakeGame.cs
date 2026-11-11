@@ -15,7 +15,10 @@ namespace ElegantSnake
         Ate,
 
         /// <summary>Wąż zginął (ściana, przeszkoda lub własne ciało).</summary>
-        Died
+        Died,
+
+        /// <summary>Wąż zajął wszystkie dostępne pola.</summary>
+        Won
     }
 
     /// <summary>
@@ -58,6 +61,8 @@ namespace ElegantSnake
         /// <summary>Bieżący wynik.</summary>
         public int Score { get; private set; }
 
+        public bool HasWon { get; private set; }
+
         /// <summary>Aktualne ustawienia poziomu trudności.</summary>
         public DifficultySettings Settings => settings;
 
@@ -75,6 +80,7 @@ namespace ElegantSnake
             CurrentDirection = Direction.Right;
             nextDirection = Direction.Right;
             Score = 0;
+            HasWon = false;
 
             BuildObstacles();
             SpawnFood();
@@ -101,6 +107,7 @@ namespace ElegantSnake
         /// </summary>
         public StepResult Step()
         {
+            if (HasWon) return StepResult.Won;
             CurrentDirection = nextDirection;
 
             PixelPoint head = snake[0];
@@ -141,8 +148,8 @@ namespace ElegantSnake
             {
                 LastEaten = FoodKind;
                 Score += PointsFor(FoodKind);
-                SpawnFood();
-                return StepResult.Ate;
+                HasWon = !SpawnFood();
+                return HasWon ? StepResult.Won : StepResult.Ate;
             }
 
             snake.RemoveAt(snake.Count - 1);
@@ -175,19 +182,21 @@ namespace ElegantSnake
             }
         }
 
-        private void SpawnFood()
+        private bool SpawnFood()
         {
-            PixelPoint candidate;
-            do
-            {
-                candidate = new PixelPoint(
-                    random.Next(0, GameConfig.GridSize),
-                    random.Next(0, GameConfig.GridSize));
-            }
-            while (snake.Contains(candidate) || obstacles.Contains(candidate));
-
-            Food = candidate;
+            var occupied = new HashSet<PixelPoint>(snake);
+            occupied.UnionWith(obstacles);
+            var free = new List<PixelPoint>();
+            for (int y = 0; y < GameConfig.GridSize; y++)
+                for (int x = 0; x < GameConfig.GridSize; x++)
+                {
+                    var cell = new PixelPoint(x, y);
+                    if (!occupied.Contains(cell)) free.Add(cell);
+                }
+            if (free.Count == 0) return false;
+            Food = free[random.Next(free.Count)];
             FoodKind = RollFoodType();
+            return true;
         }
 
         private FoodType RollFoodType()
