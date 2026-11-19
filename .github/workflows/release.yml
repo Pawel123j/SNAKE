@@ -6,13 +6,18 @@ on:
     tags: ["v*"]
   workflow_dispatch:
 
+# REL-01: token domyślnie tylko do odczytu; zapis wyłącznie w jobie publish.
 permissions:
-  contents: write
+  contents: read
 
 jobs:
   build:
     name: ${{ matrix.rid }}
     runs-on: ${{ matrix.os }}
+    permissions:
+      contents: read
+      id-token: write       # OIDC dla podpisu Sigstore
+      attestations: write   # atestacja pochodzenia paczki
     strategy:
       fail-fast: false
       matrix:
@@ -23,9 +28,11 @@ jobs:
             rid: linux-x64
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
 
-      - uses: actions/setup-dotnet@v4
+      - uses: actions/setup-dotnet@67a3573c9a986a3f9c594539f4ab511d57bb3ce9 # v4
         with:
           dotnet-version: '8.0.x'
 
@@ -54,7 +61,13 @@ jobs:
             zip -r "../snake-${{ matrix.rid }}.zip" "${{ matrix.rid }}"
           fi
 
-      - uses: actions/upload-artifact@v4
+      - name: Atestacja pochodzenia (Sigstore)
+        # Weryfikacja: gh attestation verify snake-<rid>.zip --repo <owner>/SNAKE
+        uses: actions/attest-build-provenance@977bb373ede98d70efdf65b84cb5f73e068dcc2a # v3
+        with:
+          subject-path: snake-${{ matrix.rid }}.zip
+
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: snake-${{ matrix.rid }}
           path: snake-${{ matrix.rid }}.zip
@@ -64,10 +77,14 @@ jobs:
     needs: build
     runs-on: ubuntu-latest
     if: startsWith(github.ref, 'refs/tags/v')
+    permissions:
+      contents: write   # tylko ten job tworzy wydanie
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
 
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
         with:
           path: artifacts
           merge-multiple: true
